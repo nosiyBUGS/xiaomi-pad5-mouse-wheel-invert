@@ -1,6 +1,6 @@
-# Xiaomi Pad 5 鼠标滚轮方向修复 (evdev / uinput)
+# Xiaomi Pad 5 鼠标滚轮方向反转 (evdev / uinput)
 
-在 **Xiaomi Pad 5 系列**上修复鼠标滚轮方向反转：**本机应用和 UU远程（UU Remote）远程会话都适用**。修复后浏览器滚动方向与 PC 一致。
+在 **Xiaomi Pad 5 系列**上反转鼠标滚轮方向：**本机应用和 UU远程（UU Remote）远程会话都适用**。反转后浏览器滚动方向与 PC 一致。
 
 系统级方案：抓取物理鼠标的 evdev 事件，通过 `/dev/uinput` 重新发一个虚拟鼠标。**不依赖 Frida，不需要改主机，开机自启。**
 
@@ -16,7 +16,7 @@
 
 v1.3 起虚拟鼠标在物理鼠标重连时保持存在，避免 UU远程 绑定到已销毁的旧设备；v1.4 起默认 `invert=0`；v1.5 起目标鼠标名可配置。
 
-Frida 钩 `MotionEvent.getAxisValue(AXIS_VSCROLL)` 取反可以临时修复，但需要主机 watcher，重启后容易失效。本项目把修复下沉到 Android 输入层。
+Frida 钩 `MotionEvent.getAxisValue(AXIS_VSCROLL)` 取反也能达到反转效果，但需要主机 watcher，重启后容易失效。本项目把反转下沉到 Android 输入层。
 
 ## 原理
 
