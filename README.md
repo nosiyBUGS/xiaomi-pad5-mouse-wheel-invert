@@ -57,7 +57,7 @@ ZIG=/path/to/zig ./build.sh
 生成：
 
 - `module/uu_wheel_flip`：ARM64 静态二进制
-- `dist/uu-wheel-evdev.zip`：KernelSU/Magisk 模块包
+- `dist/xiaomi-pad5-mouse-wheel-fix.zip`：KernelSU/Magisk 模块包
 
 手动编译：
 
@@ -68,15 +68,15 @@ zig cc -target aarch64-linux-musl -static -O2 -o uu_wheel_flip src/uu_wheel_flip
 ## 安装
 
 ```bash
-adb push dist/uu-wheel-evdev.zip /data/local/tmp/
-adb shell "su -c 'ksud module install /data/local/tmp/uu-wheel-evdev.zip'"
+adb push dist/xiaomi-pad5-mouse-wheel-fix.zip /data/local/tmp/
+adb shell "su -c 'ksud module install /data/local/tmp/xiaomi-pad5-mouse-wheel-fix.zip'"
 adb reboot
 ```
 
 Magisk：
 
 ```bash
-adb shell "su -c 'magisk --install-module /data/local/tmp/uu-wheel-evdev.zip'"
+adb shell "su -c 'magisk --install-module /data/local/tmp/xiaomi-pad5-mouse-wheel-fix.zip'"
 adb reboot
 ```
 

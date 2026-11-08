@@ -11,10 +11,10 @@ mkdir -p module dist
 cp uu_wheel_flip module/uu_wheel_flip
 chmod 755 module/uu_wheel_flip
 
-rm -f dist/uu-wheel-evdev.zip
+rm -f dist/xiaomi-pad5-mouse-wheel-fix.zip
 (
   cd module
-  zip -r ../dist/uu-wheel-evdev.zip module.prop service.sh uu_wheel_flip
+  zip -r ../dist/xiaomi-pad5-mouse-wheel-fix.zip module.prop service.sh uu_wheel_flip
 )
 
-echo "built: $ROOT/dist/uu-wheel-evdev.zip"
+echo "built: $ROOT/dist/xiaomi-pad5-mouse-wheel-fix.zip"

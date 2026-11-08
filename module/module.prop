@@ -1,6 +1,6 @@
 id=uu-wheel-evdev
-name=UU Wheel Flip (evdev/uinput)
-version=1.5
-versionCode=6
+name=Xiaomi Pad 5 Mouse Wheel Fix
+version=1.6
+versionCode=7
 author=opencode
-description=Configurable target mice; stable uinput across reconnects; UU Remote wheel fix
+description=Mouse wheel direction fix for Xiaomi Pad 5 series (local apps + UU Remote); configurable target mice; stable uinput
