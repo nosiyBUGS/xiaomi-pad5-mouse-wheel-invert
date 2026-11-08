@@ -1,12 +1,20 @@
-# UU Remote Wheel Fix (evdev / uinput)
+# Xiaomi Pad 5 鼠标滚轮方向修复 (evdev / uinput)
 
-在 Android 平板上修复 **UU远程（UU Remote）** 远程会话鼠标滚轮方向反转的问题。
+在 **Xiaomi Pad 5 系列**上修复鼠标滚轮方向反转：**本机应用和 UU远程（UU Remote）远程会话都适用**。修复后浏览器滚动方向与 PC 一致。
 
 系统级方案：抓取物理鼠标的 evdev 事件，通过 `/dev/uinput` 重新发一个虚拟鼠标。**不依赖 Frida，不需要改主机，开机自启。**
 
+## 支持范围
+
+- Xiaomi Pad 5 系列（实测 Xiaomi Pad 5 Pro 12.4，型号 `22081281AC`，Android 12 / MIUI）
+- 其余 Xiaomi Pad 5 型号未测；其他 Android 设备也未测
+- 需要 root（KernelSU / SukiSU；Magisk 理论上可用）和内核 `CONFIG_INPUT_UINPUT`
+
 ## 背景
 
-在 Xiaomi Pad 5 Pro 12.4（Android 12 / MIUI，arm64-v8a，KernelSU/SukiSU）上，UU远程 远程桌面里的鼠标滚轮方向是反的。最终在 UU远程主机 4.45 上验证：v1.3+ 的稳定虚拟设备配合 `invert=0` 直通，远程与平板本地滚动都正常。v1.3 起虚拟鼠标在物理鼠标重连时保持存在，避免 UU远程 绑定到已销毁的旧设备。
+最初是为 UU远程 做的；后续实测发现这台平板的**本机应用滚轮方向也是反的**，浏览器上下滚动与 PC 相反。启用本模块后，本机应用和 UU远程 两个场景都正常，浏览器浏览体验与电脑一致。
+
+v1.3 起虚拟鼠标在物理鼠标重连时保持存在，避免 UU远程 绑定到已销毁的旧设备；v1.4 起默认 `invert=0`；v1.5 起目标鼠标名可配置。
 
 Frida 钩 `MotionEvent.getAxisValue(AXIS_VSCROLL)` 取反可以临时修复，但需要主机 watcher，重启后容易失效。本项目把修复下沉到 Android 输入层。
 
