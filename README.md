@@ -87,10 +87,31 @@ adb reboot
 adb shell "su -c 'echo 0 > /data/local/tmp/uu_wheel_flip.invert'"
 ```
 
-- `0`：直通，不翻转（v1.4 默认，当前验证正确）
+- `0`：直通，不翻转（v1.4+ 默认，当前验证正确）
 - `1`：翻转 `REL_WHEEL` / `REL_HWHEEL`
 
-修改后**立即生效**，不需要重启 daemon。日志：
+修改后**立即生效**，不需要重启 daemon。
+
+目标鼠标名：
+
+```bash
+adb shell "su -c 'cat /data/local/tmp/uu_wheel_flip.targets'"
+```
+
+默认内容：
+
+```text
+BT5.0 Mouse
+Xiaomi Mouse
+```
+
+- 每行一个名字，按**子串**匹配；支持 `*` / `?` 通配符
+- `#` 开头是注释，空行忽略
+- 文件不存在或没有有效行时，使用内置的 `BT5.0 Mouse` / `Xiaomi Mouse`
+- 新增名字后，下次扫描（约 2 秒）生效；替换已连接的鼠标名时，重连鼠标或重启 daemon
+- 手动运行时也可以用参数覆盖文件：`uu_wheel_flip "Mouse Name"`
+
+日志：
 
 ```bash
 adb shell "su -c 'cat /data/local/tmp/uu_wheel_flip.log'"
@@ -98,7 +119,7 @@ adb shell "su -c 'cat /data/local/tmp/uu_wheel_flip.log'"
 
 ## 注意
 
-- 目前只接管名字含 `BT5.0 Mouse` 或 `Xiaomi Mouse` 的设备。换鼠标需要改 `src/uu_wheel_flip.c` 里的 `is_target()`。
+- 换鼠标不需要重编译：把 `/proc/bus/input/devices` 里的 `N: Name=` 加到 `/data/local/tmp/uu_wheel_flip.targets` 即可。v1.5 起支持。
 - `service.sh` 只在控制文件不存在时写入默认值。从旧版升级且已有控制文件时不会被覆盖；如果之前手动设过 `1`，升级后请执行上面的 `echo 0`。
 - 开机后 daemon 有约 15 秒启动延迟；如果刚开机就打开 UU远程，可能先绑到物理鼠标，重开一次 App 即可。
 - BT 鼠标在开机后可能重连一次；v1.3 会保留虚拟鼠标并复用，不需要因为重连重开 UU远程。

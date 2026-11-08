@@ -1,6 +1,6 @@
 id=uu-wheel-evdev
 name=UU Wheel Flip (evdev/uinput)
-version=1.4
-versionCode=5
+version=1.5
+versionCode=6
 author=opencode
-description=Keep uinput mouse stable across reconnects; fixes UU Remote wheel (default invert=0)
+description=Configurable target mice; stable uinput across reconnects; UU Remote wheel fix

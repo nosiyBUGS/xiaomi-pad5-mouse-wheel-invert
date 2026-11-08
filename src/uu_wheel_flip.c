@@ -19,6 +19,8 @@
 #include <signal.h>
 #include <poll.h>
 #include <time.h>
+#include <ctype.h>
+#include <fnmatch.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/file.h>
@@ -41,6 +43,7 @@ struct uinput_setup {
 #define MAX_DEV 8
 #define LOCK_PATH "/data/local/tmp/uu_wheel_flip.lock"
 #define CONTROL_PATH "/data/local/tmp/uu_wheel_flip.invert"
+#define TARGETS_PATH "/data/local/tmp/uu_wheel_flip.targets"
 #define SCAN_INTERVAL 2
 
 struct dev {
@@ -52,6 +55,8 @@ struct dev {
 };
 
 static volatile sig_atomic_t running = 1;
+static int g_argc;
+static char **g_argv;
 
 static void on_signal(int sig) {
     (void)sig;
@@ -87,17 +92,68 @@ static int test_bit(const unsigned long *bits, int nr) {
                   (nr % (8 * sizeof(unsigned long)))) & 1UL);
 }
 
+static int match_target(const char *pattern, const char *name) {
+    if (pattern[0] == '\0') {
+        return 0;
+    }
+    if (strpbrk(pattern, "*?[") != NULL) {
+        return fnmatch(pattern, name, 0) == 0;
+    }
+    return strstr(name, pattern) != NULL;
+}
+
+static int builtin_target(const char *name) {
+    return strstr(name, "BT5.0 Mouse") != NULL ||
+           strstr(name, "Xiaomi Mouse") != NULL;
+}
+
 static int is_target(const char *name) {
     if (strstr(name, "UU Wheel Flip") != NULL) {
         return 0;
     }
-    if (strstr(name, "BT5.0 Mouse") != NULL) {
-        return 1;
+
+    /* Optional CLI arguments override the config file. */
+    if (g_argc > 0) {
+        for (int i = 0; i < g_argc; i++) {
+            if (match_target(g_argv[i], name)) {
+                return 1;
+            }
+        }
+        return 0;
     }
-    if (strstr(name, "Xiaomi Mouse") != NULL) {
-        return 1;
+
+    FILE *fp = fopen(TARGETS_PATH, "r");
+    if (fp == NULL) {
+        return builtin_target(name);
     }
-    return 0;
+
+    char line[256];
+    int count = 0;
+    int matched = 0;
+    while (fgets(line, sizeof(line), fp) != NULL) {
+        char *p = line;
+        while (*p != '\0' && isspace((unsigned char)*p)) {
+            p++;
+        }
+        char *end = p + strlen(p);
+        while (end > p && isspace((unsigned char)end[-1])) {
+            *--end = '\0';
+        }
+        if (*p == '\0' || *p == '#') {
+            continue;
+        }
+        count++;
+        if (match_target(p, name)) {
+            matched = 1;
+            break;
+        }
+    }
+    fclose(fp);
+
+    if (count == 0) {
+        return builtin_target(name);
+    }
+    return matched;
 }
 
 static int open_uinput(struct dev *d) {
@@ -368,7 +424,10 @@ static void scan_devs(struct dev *devs, int *ndev) {
     closedir(dir);
 }
 
-int main(void) {
+int main(int argc, char **argv) {
+    g_argc = argc > 1 ? argc - 1 : 0;
+    g_argv = argc > 1 ? argv + 1 : NULL;
+
     signal(SIGINT, on_signal);
     signal(SIGTERM, on_signal);
     signal(SIGHUP, on_signal);
