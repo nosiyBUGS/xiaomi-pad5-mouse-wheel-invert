@@ -207,37 +207,46 @@ static int attach_dev(struct dev *d, const char *path) {
         return -1;
     }
 
+    int reuse = (d->ufd >= 0 && strcmp(d->name, name) == 0);
     d->fd = fd;
-    d->ufd = -1;
     d->id = id;
     snprintf(d->path, sizeof(d->path), "%s", path);
     snprintf(d->name, sizeof(d->name), "%s", name);
 
-    d->ufd = open_uinput(d);
-    if (d->ufd < 0) {
-        ioctl(fd, EVIOCGRAB, 0);
-        close(fd);
-        d->fd = -1;
-        return -1;
+    /* Keep the virtual device alive across physical mouse reconnects.
+     * UU Remote binds to the virtual device; destroying/recreating it
+     * leaves the app on a stale input device and wheel direction flips. */
+    if (!reuse) {
+        d->ufd = open_uinput(d);
+        if (d->ufd < 0) {
+            ioctl(fd, EVIOCGRAB, 0);
+            close(fd);
+            d->fd = -1;
+            return -1;
+        }
     }
 
-    logmsg("attached %s (%s)", path, name);
+    logmsg("attached %s (%s)%s", path, name, reuse ? " [virtual kept]" : "");
     return 0;
 }
 
-static void detach_dev(struct dev *d) {
+static void disconnect_dev(struct dev *d) {
     if (d->fd >= 0) {
         ioctl(d->fd, EVIOCGRAB, 0);
         close(d->fd);
         d->fd = -1;
     }
+    if (d->path[0] != '\0') {
+        logmsg("disconnected %s (%s), virtual kept", d->path, d->name);
+    }
+}
+
+static void destroy_dev(struct dev *d) {
+    disconnect_dev(d);
     if (d->ufd >= 0) {
         ioctl(d->ufd, UI_DEV_DESTROY);
         close(d->ufd);
         d->ufd = -1;
-    }
-    if (d->path[0] != '\0') {
-        logmsg("detached %s", d->path);
     }
 }
 
@@ -249,11 +258,11 @@ static void process_dev(struct dev *d) {
             return;
         }
         logmsg("read %s: %s", d->path, strerror(errno));
-        detach_dev(d);
+        disconnect_dev(d);
         return;
     }
     if (n == 0) {
-        detach_dev(d);
+        disconnect_dev(d);
         return;
     }
 
@@ -271,10 +280,21 @@ static void process_dev(struct dev *d) {
         ssize_t w = write(d->ufd, &ev[i], sizeof(ev[i]));
         if (w != (ssize_t)sizeof(ev[i])) {
             logmsg("write uinput %s: %s", d->path, strerror(errno));
-            detach_dev(d);
+            destroy_dev(d);
             return;
         }
     }
+}
+
+static int read_dev_name(const char *path, char *name, size_t size) {
+    int fd = open(path, O_RDONLY | O_NONBLOCK);
+    if (fd < 0) {
+        return -1;
+    }
+    memset(name, 0, size);
+    int ret = ioctl(fd, EVIOCGNAME(size - 1), name);
+    close(fd);
+    return ret < 0 ? -1 : 0;
 }
 
 static void scan_devs(struct dev *devs, int *ndev) {
@@ -294,7 +314,7 @@ static void scan_devs(struct dev *devs, int *ndev) {
 
         int already = 0;
         for (int i = 0; i < *ndev; i++) {
-            if (strcmp(devs[i].path, path) == 0) {
+            if (devs[i].fd >= 0 && strcmp(devs[i].path, path) == 0) {
                 already = 1;
                 break;
             }
@@ -302,16 +322,47 @@ static void scan_devs(struct dev *devs, int *ndev) {
         if (already) {
             continue;
         }
-        if (*ndev >= MAX_DEV) {
-            break;
+
+        char name[256];
+        if (read_dev_name(path, name, sizeof(name)) < 0 || !is_target(name)) {
+            continue;
         }
 
-        struct dev *d = &devs[*ndev];
-        memset(d, 0, sizeof(*d));
-        d->fd = -1;
-        d->ufd = -1;
-        if (attach_dev(d, path) == 0) {
-            (*ndev)++;
+        int idx = -1;
+        /* A physically disconnected target keeps its virtual device.
+         * Reuse that slot by name so the virtual device stays stable. */
+        for (int i = 0; i < *ndev; i++) {
+            if (devs[i].fd < 0 && strcmp(devs[i].name, name) == 0) {
+                idx = i;
+                break;
+            }
+        }
+
+        int is_new = 0;
+        if (idx < 0) {
+            for (int i = 0; i < *ndev; i++) {
+                if (devs[i].fd < 0 && devs[i].ufd < 0) {
+                    idx = i;
+                    break;
+                }
+            }
+        }
+        if (idx < 0) {
+            if (*ndev >= MAX_DEV) {
+                continue;
+            }
+            idx = (*ndev)++;
+            is_new = 1;
+            memset(&devs[idx], 0, sizeof(devs[idx]));
+            devs[idx].fd = -1;
+            devs[idx].ufd = -1;
+        }
+
+        if (attach_dev(&devs[idx], path) < 0 && is_new) {
+            memset(&devs[idx], 0, sizeof(devs[idx]));
+            devs[idx].fd = -1;
+            devs[idx].ufd = -1;
+            (*ndev)--;
         }
     }
     closedir(dir);
@@ -376,7 +427,7 @@ int main(void) {
 
         int w = 0;
         for (int i = 0; i < ndev; i++) {
-            if (devs[i].fd >= 0) {
+            if (devs[i].fd >= 0 || devs[i].ufd >= 0) {
                 if (w != i) {
                     devs[w] = devs[i];
                 }
@@ -393,7 +444,7 @@ int main(void) {
     }
 
     for (int i = 0; i < ndev; i++) {
-        detach_dev(&devs[i]);
+        destroy_dev(&devs[i]);
     }
     logmsg("uu_wheel_flip stop");
 

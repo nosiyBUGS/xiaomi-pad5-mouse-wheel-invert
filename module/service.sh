@@ -6,7 +6,7 @@ MODDIR=/data/adb/modules/uu-wheel-evdev
 CTRL=/data/local/tmp/uu_wheel_flip.invert
 LOG=/data/local/tmp/uu_wheel_flip.log
 
-# 0 = pass-through (confirmed correct for UU Remote), 1 = invert
+# 0 = pass-through (default, verified correct with the v1.3+ stable virtual device), 1 = invert
 if [ ! -f "$CTRL" ]; then
   echo 0 > "$CTRL"
 fi
