@@ -1,6 +1,6 @@
 id=uu-wheel-evdev
-name=Xiaomi Pad 5 Mouse Wheel Fix
-version=1.6
-versionCode=7
+name=Xiaomi Pad 5 Mouse Wheel Invert
+version=1.7
+versionCode=8
 author=opencode
-description=Mouse wheel direction fix for Xiaomi Pad 5 series (local apps + UU Remote); configurable target mice; stable uinput
+description=Mouse wheel direction inversion for Xiaomi Pad 5 series (local apps + UU Remote); configurable target mice; stable uinput
